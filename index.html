@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Niklas Impostor Spiel</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
+      color: #f5f5f5;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      align-items: center;
+    }
+
+    h1 {
+      margin-top: 2rem;
+      font-size: 2.5rem;
+      color: #ffcc00;
+      text-shadow: 1px 1px 4px #000;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #modeSelection, #setup, #reveal {
+      width: 100%;
+      max-width: 500px;
+      padding: 1rem;
+      background-color: rgba(30, 30, 30, 0.95);
+      margin-top: 1rem;
+      border-radius: 1rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);
+    }
+
+    .player-input, .custom-words {
+      margin-bottom: 1rem;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+      background-color: #333;
+      color: #fff;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      background-color: #ff9800;
+      color: #121212;
+      font-weight: bold;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      margin: 0.3rem;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #ffa726;
+    }
+
+    ul#playerList {
+      list-style: none;
+      padding: 0;
+      margin: 1rem 0;
+    }
+
+    ul#playerList li {
+      background-color: #444;
+      margin: 0.3rem 0;
+      padding: 0.4rem;
+      border-radius: 0.3rem;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    ul#playerList li:hover {
+      background-color: #e53935;
+      color: #fff;
+    }
+
+    .red {
+      color: red;
+      font-weight: bold;
+    }
+
+    .word-list {
+      max-height: 150px;
+      overflow-y: auto;
+      background-color: #333;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+    }
+
+    .word-list span {
+      display: inline-block;
+      margin: 0.2rem;
+      background-color: #555;
+      padding: 0.3rem 0.6rem;
+      border-radius: 0.3rem;
+    }
+
+    .main-menu-button {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #f44336;
+      color: #fff;
+      padding: 0.7rem 1.5rem;
+      font-weight: bold;
+    }
+
+    .main-menu-button:hover {
+      background-color: #e53935;
+    }
+
+    #revealText {
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Niklas Impostor Game</h1>
+
+  <div id="modeSelection">
+    <button onclick="selectMode('standard')">Standard Wörter</button>
+    <button onclick="selectMode('custom')">Eigene Wörter</button>
+  </div>
+
+  <div id="setup" class="hidden">
+    <div class="player-input">
+      <input type="text" id="playerName" placeholder="Spielernamen eingeben" />
+      <button onclick="addPlayer()">Spieler Hinzufügen</button>
+    </div>
+    <ul id="playerList"></ul>
+
+    <div id="customWordsInput" class="custom-words hidden">
+      <textarea id="customWords" rows="5" placeholder="Wörter durch Komma trennen"></textarea>
+      <div class="word-list" id="customWordsPreview"></div>
+    </div>
+
+    <button onclick="startGame()">Starten</button>
+  </div>
+
+  <div id="reveal" class="hidden">
+    <h2 id="revealText"></h2>
+    <button onclick="confirmReveal()" id="confirmButton">Aufdecken</button>
+    <button onclick="nextReveal()" id="nextButton" class="hidden">Nächster Spieler</button>
+    <button onclick="showImpostor()" id="showImpostorButton" class="hidden">Impostor aufdecken</button>
+    <button onclick="startNewRound()" id="newRoundButton" class="hidden">Neue Runde</button>
+  </div>
+
+  <button onclick="returnToMainMenu()" class="main-menu-button">Hauptmenü</button>
+
+  <script>
+    let players = [];
+    let currentIndex = 0;
+    let impostorIndex = -1;
+    let selectedWord = "";
+    let impostorWord = "";
+    let useCustomWords = false;
+
+    const wordList = [
+      "Fußball", "Sprint", "Muskelkater", "Ausdauer", "Wettkampf", "Schiedsrichter", "Medaille", "Training",
+      "Fitnessstudio", "Regeneration", "Motivation", "Teamgeist", "Trikot", "Taktik", "Trainer", "Pokal",
+      "Aufwärmen", "Spielfeld", "Disziplin", "Sieger", "Handball", "Torwart", "Kreisläufer", "Außenposition",
+      "Rückraum", "Abwehr", "Angriff", "Wurfkraft", "Passspiel", "Tempogegenstoß", "Freiwurf", "Siebenmeter",
+      "Time-Out", "Halbzeit", "Spielzeit", "Schlussphase", "Halle", "Ballharz", "Handgelenk", "Manndeckung",
+      "Hund", "Katze", "Pferd", "Vogel", "Kaninchen", "Fisch", "Hamster", "Löwe", "Tiger", "Elefant",
+      "Giraffe", "Affe", "Krokodil", "Schlange", "Pinguin", "Eule", "Bär", "Fuchs", "Waschbär", "Igel",
+      "Schule", "Hausaufgaben", "Wecker", "Kleidung", "Handy", "Laptop", "Internet", "Einkaufen", "Kochen",
+      "Duschen", "Zähneputzen", "Fernsehen", "Reinigung", "Freizeit", "Urlaub", "Freunde", "Familie", "Verkehr",
+      "Bushaltestelle", "Tagesablauf", "Pizza", "Burger", "Salat", "Spaghetti", "Kartoffeln", "Suppe", "Obst",
+      "Gemüse", "Schokolade", "Eis", "Brötchen", "Butter", "Käse", "Wurst", "Steak", "Milch", "Joghurt",
+      "Wasser", "Saft", "Tee", "Frühstück", "Mittagessen", "Abendessen", "Snack", "Süßigkeiten", "Backen",
+      "Kochtopf", "Pfanne", "Rezept", "Kühlschrank"
+    ];
+
+    function selectMode(mode) {
+      useCustomWords = (mode === 'custom');
+      document.getElementById('modeSelection').classList.add('hidden');
+      document.getElementById('setup').classList.remove('hidden');
+      document.getElementById('customWordsInput').classList.toggle('hidden', !useCustomWords);
+      updateCustomWordsPreview();
+    }
+
+    function addPlayer() {
+      const nameInput = document.getElementById('playerName');
+      const name = nameInput.value.trim();
+      if (name && !players.includes(name)) {
+        players.push(name);
+        updatePlayerList();
+        nameInput.value = '';
+      }
+    }
+
+    function removePlayer(name) {
+      players = players.filter(p => p !== name);
+      updatePlayerList();
+    }
+
+    function updatePlayerList() {
+      const list = document.getElementById('playerList');
+      list.innerHTML = '';
+      players.forEach(p => {
+        const li = document.createElement('li');
+        li.textContent = p;
+        li.title = "Klicken zum Entfernen";
+        li.onclick = () => removePlayer(p);
+        list.appendChild(li);
+      });
+    }
+
+    function startGame() {
+      if (players.length < 3) {
+        alert('Mindestens 3 Spieler benötigt!');
+        return;
+      }
+
+      let availableWords = wordList;
+      if (useCustomWords) {
+        const customInput = document.getElementById('customWords').value.trim();
+        const customArray = customInput.split(',').map(w => w.trim()).filter(w => w);
+        if (customArray.length < 10) {
+          alert('Bitte mindestens 10 gültige Wörter eingeben.');
+          return;
+        }
+        availableWords = customArray;
+      }
+
+      selectedWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+      do {
+        impostorWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+      } while (impostorWord === selectedWord);
+
+      impostorIndex = Math.floor(Math.random() * players.length);
+      currentIndex = 0;
+
+      document.getElementById('setup').classList.add('hidden');
+      document.getElementById('reveal').classList.remove('hidden');
+
+      document.getElementById('revealText').textContent = `${players[currentIndex]} ist dran. Bitte übergebe das Gerät.`;
+      document.getElementById('confirmButton').classList.remove('hidden');
+      document.getElementById('nextButton').classList.add('hidden');
+      document.getElementById('showImpostorButton').classList.add('hidden');
+      document.getElementById('newRoundButton').classList.add('hidden');
+    }
+
+    function confirmReveal() {
+      const isImpostor = currentIndex === impostorIndex;
+      const word = isImpostor ? impostorWord : selectedWord;
+      const display = isImpostor ? `${word} <span class='red'>(IMPOSTOR)</span>` : word;
+      document.getElementById('revealText').innerHTML = `${players[currentIndex]}, dein Wort ist: ${display}`;
+      document.getElementById('confirmButton').classList.add('hidden');
+      document.getElementById('nextButton').classList.remove('hidden');
+    }
+
+    function nextReveal() {
+      currentIndex++;
+      if (currentIndex < players.length) {
+        document.getElementById('revealText').textContent = `${players[currentIndex]} ist dran. Bitte übergebe das Gerät.`;
+        document.getElementById('confirmButton').classList.remove('hidden');
+        document.getElementById('nextButton').classList.add('hidden');
+      } else {
+        document.getElementById('revealText').textContent = 'Alle Rollen wurden aufgedeckt! Viel Spaß!';
+        document.getElementById('confirmButton').classList.add('hidden');
+        document.getElementById('nextButton').classList.add('hidden');
+        document.getElementById('showImpostorButton').classList.remove('hidden');
+      }
+    }
+
+    function showImpostor() {
+      const impostorName = players[impostorIndex];
+      document.getElementById('revealText').innerHTML = `<span class='red'>${impostorName} war der IMPOSTOR!</span>`;
+      document.getElementById('showImpostorButton').classList.add('hidden');
+      document.getElementById('newRoundButton').classList.remove('hidden');
+    }
+
+    function startNewRound() {
+      document.getElementById('reveal').classList.add('hidden');
+      document.getElementById('setup').classList.remove('hidden');
+    }
+
+    function returnToMainMenu() {
+      players = [];
+      currentIndex = 0;
+      impostorIndex = -1;
+      selectedWord = "";
+      impostorWord = "";
+      document.getElementById('playerList').innerHTML = '';
+      document.getElementById('playerName').value = '';
+      document.getElementById('customWords').value = '';
+      document.getElementById('customWordsPreview').innerHTML = '';
+      document.getElementById('reveal').classList.add('hidden');
+      document.getElementById('setup').classList.add('hidden');
+      document.getElementById('modeSelection').classList.remove('hidden');
+    }
+
+    function updateCustomWordsPreview() {
+      const input = document.getElementById('customWords');
+      const preview = document.getElementById('customWordsPreview');
+      input.addEventListener('input', () => {
+        const words = input.value.split(',').map(w => w.trim()).filter(w => w);
+        preview.innerHTML = '';
+        words.forEach(word => {
+          const span = document.createElement('span');
+          span.textContent = word;
+          preview.appendChild(span);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
